@@ -713,6 +713,10 @@ Click the dropdown (˅) -> Click the "Create new branch and commit" -> Write "de
 
 <img width="1899" height="1894" alt="feat-cleanup" src="https://github.com/user-attachments/assets/8b17fe21-0adb-41e1-bda1-1a398b3a8ff9" />
 
+### (E) Inside Contianer Registry
+
+<img width="1920" height="1080" alt="feat-container-registry" src="https://github.com/user-attachments/assets/01d2efff-b658-42a4-80a5-303864cf0c7a" />
+
 ### 2 - Commit and Push (feat:)
 ##### Enter this in the Commit message:
 ```bash
@@ -745,3 +749,7 @@ feat: changing patch (for changing the patch version)
 - **Status**: Passed
 
 <img width="1899" height="1894" alt="fix-cleanup" src="https://github.com/user-attachments/assets/ea9e625c-2133-4381-ae35-367c73c5645f" />
+
+### (E) Inside Contianer Registry
+
+<img width="1920" height="1080" alt="fix-container-registry" src="https://github.com/user-attachments/assets/bc510896-88b8-4e55-b510-b6527031662f" />
