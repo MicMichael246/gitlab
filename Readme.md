@@ -1,5 +1,6 @@
 # GitLab Self Host Setup with Docker Compose and HAProxy and Configuring Semantic Versioning
 
+
 ## (1) Hosts Configuration
 
 ### Windows
