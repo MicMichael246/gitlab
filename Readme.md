@@ -340,33 +340,37 @@ CMD ["./app"]
 ### .gitlab-ci.yml (!Error File!)
 ```yaml
 variables:
+  IMAGE_NAME: "registry.gitlab.example.com:5050/mygroup/hello-go"
   TAG: "latest"
+
   
+#0-
 stages:
   - build
   - push
 
+
+#1-
 build:
   stage: build
   tags:
     - shell-runner
   script:
-    - docker build -t $CI_REGISTRY_IMAGE:$TAG .
-    - docker tag $CI_REGISTRY_IMAGE:$TAG $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-
+    - docker build -t $IMAGE_NAME:$TAG .
+    - docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
   only:
-    - develop    
+    - develop
 
 
+#2
 push:
   stage: push
   tags:
     - shell-runner
   script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" $CI_REGISTRY --password-stdin
-    - docker push $CI_REGISTRY_IMAGE:$TAG
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-
+    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" registry.gitlab.example.com:5050 --password-stdin
+    - docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$VERSION
+    - docker push $IMAGE_NAME:$VERSION
   only:
     - develop
 ```
@@ -423,39 +427,22 @@ variables:
 
 stages:
   - build
-  - push
   - release
-#1
+  - push
+
+#1-
 build:
   stage: build
   tags:
     - shell-runner
   script:
-
     - docker build -t $IMAGE_NAME:$TAG .
     - docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-
   only:
     - develop
-#2 Updated
-push:
-  stage: push
-  tags:
-    - shell-runner
-  script:
-    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" registry.gitlab.example.com:5050 --password-stdin
-    - VERSION=$(git describe --tags --abbrev=0 || echo "latest")
-    - docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$VERSION
-    - docker push $IMAGE_NAME:$TAG
-    - docker push $IMAGE_NAME:$VERSION
-    - docker push $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
 
-    - docker pull $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-    - docker pull $IMAGE_NAME:$VERSION
 
-  only:
-    - develop
-#3 (Also add the release stage for semantic versioning)
+#2 (Also add the release stage for semantic versioning)
 release:
   stage: release
   image: node:24-bullseye
@@ -468,6 +455,28 @@ release:
   script:
     - npm ci
     - npx semantic-release
+  only:
+    - develop
+
+
+#3 Updated
+push:
+  stage: push
+  tags:
+    - shell-runner
+  needs:
+    - release
+  script:
+    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" registry.gitlab.example.com:5050 --password-stdin
+    - git fetch --tags --force --prune
+    - git fetch origin +refs/tags/*:refs/tags/* --force
+    - git describe --tags --abbrev=0
+    - VERSION=$(git tag --sort=-creatordate | head -n 1 || echo "latest")
+
+    - echo "Detected version:" $VERSION
+
+    - docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$VERSION
+    - docker push $IMAGE_NAME:$VERSION
   only:
     - develop
 ```
@@ -533,41 +542,28 @@ variables:
   IMAGE_NAME: "registry.gitlab.example.com:5050/mygroup/hello-go"
   TAG: "latest"
 
+  
+#0-
 stages:
   - build
-  - push
   - release
-#1
+  - push
+  - cleanup
+
+
+#1-
 build:
   stage: build
   tags:
     - shell-runner
   script:
-
     - docker build -t $IMAGE_NAME:$TAG .
     - docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-
   only:
     - develop
-#2
-push:
-  stage: push
-  tags:
-    - shell-runner
-  script:
-    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" registry.gitlab.example.com:5050 --password-stdin
-    - VERSION=$(git describe --tags --abbrev=0 || echo "latest")
-    - docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$VERSION
-    - docker push $IMAGE_NAME:$TAG
-    - docker push $IMAGE_NAME:$VERSION
-    - docker push $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
 
-    - docker pull $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-    - docker pull $IMAGE_NAME:$VERSION
 
-  only:
-    - develop
-#3 Updated
+#2- Updated
 release:
   stage: release
   image: node:24-bullseye
@@ -585,7 +581,31 @@ release:
     - npx semantic-release
   only:
     - develop
-#4 (Also add the cleanup stage for semantic versioning to delete the older versions and keeping the last 5 new versions)
+
+
+#3-
+push:
+  stage: push
+  tags:
+    - shell-runner
+  needs:
+    - release
+  script:
+    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" registry.gitlab.example.com:5050 --password-stdin
+    - git fetch --tags --force --prune
+    - git fetch origin +refs/tags/*:refs/tags/* --force
+    - git describe --tags --abbrev=0
+    - VERSION=$(git tag --sort=-creatordate | head -n 1 || echo "latest")
+
+    - echo "Detected version:" $VERSION
+
+    - docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$VERSION
+    - docker push $IMAGE_NAME:$VERSION
+  only:
+    - develop
+
+
+#4- (Also add the cleanup stage for semantic versioning to delete the older versions and keeping the last 5 new versions)
 cleanup_old_releases:
   stage: cleanup
   image: ubuntu:22.04
@@ -660,7 +680,7 @@ My Repository -> Code -> Open with Web IDE -> Source Control (Ctrl+Shift+G)
 ### 1 - Commit and Push (fix:)
 ##### (A) Enter this in the Commit message:
 ```bash
-fix: changing patch (for changing the patch version)
+fix: changing minor (for changing the minor version)
 ```
 
 ##### (B) Then:
@@ -668,560 +688,87 @@ fix: changing patch (for changing the patch version)
 Click the dropdown (˅) -> Click the "Create new branch and commit" -> Write "develop -> Enter
 ```
 ### ***Pipelines:***
+
+```
+<img width="1920" height="1080" alt="feat changing minor pipeline" src="https://github.com/user-attachments/assets/4ee3dac5-4f00-46c5-917a-b761b97ea161" />
+
+```
+
 ### (A) Build Stage
 - **Status**: Passed
 - **Executor**: Shell
 
 ```bash
-Running with gitlab-runner 18.5.0 (bda84871)
-  on shell-runner 7vEJkJxfR, system ID: s_d3e36046c4ec
-Preparing the "shell" executor 00:00
-Using Shell (bash) executor...
-Preparing environment 00:00
-Running on Aceraspire7-Kite...
-Getting source from Git repository 00:03
-Gitaly correlation ID: 01K95P3KWNB4BNSWYYHQGN3SMY
-Fetching changes with git depth set to 20...
-Reinitialized existing Git repository in /mnt/c/Users/Webhouse/builds/7vEJkJxfR/0/mygroup/hello-go/.git/
-Checking out 6892fc04 as detached HEAD (ref is develop)...
-Skipping Git submodules setup
-Executing "step_script" stage of the job script 00:45
-$ docker build -t $IMAGE_NAME:$TAG .
-#0 building with "default" instance using docker driver
-#1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile:
-#1 transferring dockerfile: 275B 0.1s done
-#1 DONE 0.9s
-#2 [internal] load metadata for docker.io/library/golang:1.22
-#2 DONE 0.0s
-#3 [internal] load metadata for docker.io/library/alpine:latest
-#3 DONE 0.0s
-#4 [internal] load .dockerignore
-#4 transferring context:
-#4 transferring context: 2B 0.0s done
-#4 DONE 1.1s
-#5 [builder 1/5] FROM docker.io/library/golang:1.22
-#5 DONE 0.0s
-#6 [internal] load build context
-#6 DONE 0.0s
-#7 [stage-1 1/3] FROM docker.io/library/alpine:latest
-#7 DONE 0.0s
-#6 [internal] load build context
-#6 transferring context: 59.39kB 3.6s
-#6 transferring context: 420.09kB 4.7s done
-#6 DONE 5.3s
-#8 [builder 2/5] WORKDIR /src
-#8 CACHED
-#9 [builder 3/5] COPY . .
-#9 DONE 2.8s
-#10 [builder 4/5] RUN go mod init example.com/hello || true
-#10 5.271 go: creating new go.mod: module example.com/hello
-#10 5.320 go: to add module requirements and sums:
-#10 5.320 	go mod tidy
-#10 DONE 5.8s
-#11 [builder 5/5] RUN go build -o app .
-#11 DONE 15.9s
-#12 [stage-1 2/3] WORKDIR /root/
-#12 CACHED
-#13 [stage-1 3/3] COPY --from=builder /src/app .
-#13 DONE 1.5s
-#14 exporting to image
-#14 exporting layers
-#14 exporting layers 1.0s done
-#14 writing image sha256:84ddfc9b8281902c783a0f734db130ac521e8d2c5d7a735f059961b89855437b
-#14 writing image sha256:84ddfc9b8281902c783a0f734db130ac521e8d2c5d7a735f059961b89855437b 0.2s done
-#14 naming to registry.gitlab.example.com:5050/mygroup/hello-go:latest
-#14 naming to registry.gitlab.example.com:5050/mygroup/hello-go:latest 0.3s done
-#14 DONE 2.0s
-$ docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-Cleaning up project directory and file based variables 00:00
-Job succeeded
+<img width="1899" height="2158" alt="feat-build" src="https://github.com/user-attachments/assets/8bf5cc23-3ad2-4b19-bbed-ebcfaf540caf" />
+
 ```
 
-### (B) Push Stage
+### (B) Release Stage
 - **Status**: Passed
 
 ```bash
-Running with gitlab-runner 18.5.0 (bda84871)
-  on shell-runner 7vEJkJxfR, system ID: s_d3e36046c4ec
-Preparing the "shell" executor 00:00
-Using Shell (bash) executor...
-Preparing environment 00:00
-Running on Aceraspire7-Kite...
-Getting source from Git repository 00:02
-Gitaly correlation ID: 01K95P55PD86A0ZCJCP3KPW4Q2
-Fetching changes with git depth set to 20...
-Reinitialized existing Git repository in /mnt/c/Users/Webhouse/builds/7vEJkJxfR/0/mygroup/hello-go/.git/
-Checking out 6892fc04 as detached HEAD (ref is develop)...
-Skipping Git submodules setup
-Executing "step_script" stage of the job script 00:06
-$ echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" registry.gitlab.example.com:5050 --password-stdin
-Login Succeeded
-$ VERSION=$(git describe --tags --abbrev=0 || echo "latest")
-$ docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$VERSION
-$ docker push $IMAGE_NAME:$TAG
-The push refers to repository [registry.gitlab.example.com:5050/mygroup/hello-go]
-46311e6d3481: Preparing
-5f70bf18a086: Preparing
-256f393e029f: Preparing
-256f393e029f: Layer already exists
-5f70bf18a086: Layer already exists
-46311e6d3481: Pushed
-latest: digest: sha256:40eeb0b47360d7e26d0ffc73786dad706e7a72b33fc6ea6c5c1be8d866ea9a5a size: 945
-$ docker push $IMAGE_NAME:$VERSION
-The push refers to repository [registry.gitlab.example.com:5050/mygroup/hello-go]
-46311e6d3481: Preparing
-5f70bf18a086: Preparing
-256f393e029f: Preparing
-46311e6d3481: Layer already exists
-256f393e029f: Layer already exists
-5f70bf18a086: Layer already exists
-v1.3.0: digest: sha256:40eeb0b47360d7e26d0ffc73786dad706e7a72b33fc6ea6c5c1be8d866ea9a5a size: 945
-$ docker push $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-The push refers to repository [registry.gitlab.example.com:5050/mygroup/hello-go]
-46311e6d3481: Preparing
-5f70bf18a086: Preparing
-256f393e029f: Preparing
-46311e6d3481: Layer already exists
-256f393e029f: Layer already exists
-5f70bf18a086: Layer already exists
-6892fc04: digest: sha256:40eeb0b47360d7e26d0ffc73786dad706e7a72b33fc6ea6c5c1be8d866ea9a5a size: 945
-$ docker pull $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-6892fc04: Pulling from mygroup/hello-go
-Digest: sha256:40eeb0b47360d7e26d0ffc73786dad706e7a72b33fc6ea6c5c1be8d866ea9a5a
-Status: Image is up to date for registry.gitlab.example.com:5050/mygroup/hello-go:6892fc04
-registry.gitlab.example.com:5050/mygroup/hello-go:6892fc04
-$ docker pull $IMAGE_NAME:$VERSION
-v1.3.0: Pulling from mygroup/hello-go
-Digest: sha256:40eeb0b47360d7e26d0ffc73786dad706e7a72b33fc6ea6c5c1be8d866ea9a5a
-Status: Image is up to date for registry.gitlab.example.com:5050/mygroup/hello-go:v1.3.0
-registry.gitlab.example.com:5050/mygroup/hello-go:v1.3.0
-Cleaning up project directory and file based variables 00:00
-Job succeeded
+<img width="1899" height="2950" alt="feat-release" src="https://github.com/user-attachments/assets/9675ac80-22cc-4ace-8d39-7a2e017cf574" />
+
 ```
 
-### (C) Release Stage
+### (C) Push Stage
 - **Status**: Passed
 
 ```bash
-Running with gitlab-runner 18.5.0 (bda84871)
-  on shell-runner 7vEJkJxfR, system ID: s_d3e36046c4ec
-Preparing the "shell" executor 00:00
-Using Shell (bash) executor...
-Preparing environment 00:00
-Running on Aceraspire7-Kite...
-Getting source from Git repository 00:04
-Gitaly correlation ID: 01K95P5GTYKYMPHBQHWXN8NSBT
-Fetching changes with git depth set to 20...
-Reinitialized existing Git repository in /mnt/c/Users/Webhouse/builds/7vEJkJxfR/0/mygroup/hello-go/.git/
-Checking out 6892fc04 as detached HEAD (ref is develop)...
-Skipping Git submodules setup
-Executing "step_script" stage of the job script 02:34
-$ npm ci
-npm warn deprecated semver-diff@5.0.0: Deprecated as the semver package now supports this built-in.
-added 371 packages, and audited 572 packages in 1m
-115 packages are looking for funding
-  run `npm fund` for details
-4 moderate severity vulnerabilities
-To address all issues (including breaking changes), run:
-  npm audit fix --force
-Run `npm audit` for details.
-$ npm install --save-dev conventional-changelog-conventionalcommits
-up to date, audited 572 packages in 8s
-115 packages are looking for funding
-  run `npm fund` for details
-4 moderate severity vulnerabilities
-To address all issues (including breaking changes), run:
-  npm audit fix --force
-Run `npm audit` for details.
-$ npx semantic-release
-[11:54:29 PM] [semantic-release] › ℹ  Running semantic-release version 25.0.1
-[11:54:44 PM] [semantic-release] › ✔  Loaded plugin "verifyConditions" from "@semantic-release/gitlab"
-[11:54:44 PM] [semantic-release] › ✔  Loaded plugin "verifyConditions" from "@semantic-release/changelog"
-[11:54:44 PM] [semantic-release] › ✔  Loaded plugin "verifyConditions" from "@semantic-release/git"
-[11:54:44 PM] [semantic-release] › ✔  Loaded plugin "analyzeCommits" from "@semantic-release/commit-analyzer"
-[11:54:44 PM] [semantic-release] › ✔  Loaded plugin "generateNotes" from "@semantic-release/release-notes-generator"
-[11:54:44 PM] [semantic-release] › ✔  Loaded plugin "prepare" from "@semantic-release/changelog"
-[11:54:44 PM] [semantic-release] › ✔  Loaded plugin "prepare" from "@semantic-release/git"
-[11:54:44 PM] [semantic-release] › ✔  Loaded plugin "publish" from "@semantic-release/gitlab"
-[11:54:44 PM] [semantic-release] › ✔  Loaded plugin "success" from "@semantic-release/gitlab"
-[11:54:44 PM] [semantic-release] › ✔  Loaded plugin "fail" from "@semantic-release/gitlab"
-[11:54:53 PM] [semantic-release] › ✔  Run automated release from branch develop on repository https://gitlab.example.com/mygroup/hello-go.git
-[11:54:53 PM] [semantic-release] › ✔  Allowed to push to the Git repository
-[11:54:53 PM] [semantic-release] › ℹ  Start step "verifyConditions" of plugin "@semantic-release/gitlab"
-[11:54:54 PM] [semantic-release] [@semantic-release/gitlab] › ℹ  Verify GitLab authentication (https://gitlab.example.com/api/v4)
-[11:54:54 PM] [semantic-release] › ✔  Completed step "verifyConditions" of plugin "@semantic-release/gitlab"
-[11:54:54 PM] [semantic-release] › ℹ  Start step "verifyConditions" of plugin "@semantic-release/changelog"
-[11:54:54 PM] [semantic-release] › ✔  Completed step "verifyConditions" of plugin "@semantic-release/changelog"
-[11:54:54 PM] [semantic-release] › ℹ  Start step "verifyConditions" of plugin "@semantic-release/git"
-[11:54:54 PM] [semantic-release] › ✔  Completed step "verifyConditions" of plugin "@semantic-release/git"
-[11:54:54 PM] [semantic-release] › ℹ  Found git tag v1.3.0 associated with version 1.3.0 on branch develop
-[11:54:54 PM] [semantic-release] › ℹ  Found 4 commits since last release
-[11:54:54 PM] [semantic-release] › ℹ  Start step "analyzeCommits" of plugin "@semantic-release/commit-analyzer"
-[11:54:55 PM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  Analyzing commit: fix: changing patch
-[11:54:55 PM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  The release type for the commit is patch
-[11:54:55 PM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  Analyzing commit: Update file .gitlab-ci.yml
-[11:54:55 PM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  The commit should not trigger a release
-[11:54:55 PM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  Analyzing commit: Update file .gitlab-ci.yml
-[11:54:55 PM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  The commit should not trigger a release
-[11:54:55 PM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  Analyzing commit: Update file .releaserc.json
-[11:54:55 PM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  The commit should not trigger a release
-[11:54:55 PM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  Analysis of 4 commits complete: patch release
-[11:54:55 PM] [semantic-release] › ✔  Completed step "analyzeCommits" of plugin "@semantic-release/commit-analyzer"
-[11:54:55 PM] [semantic-release] › ℹ  The next release version is 1.3.1
-[11:54:55 PM] [semantic-release] › ℹ  Start step "generateNotes" of plugin "@semantic-release/release-notes-generator"
-[11:54:55 PM] [semantic-release] › ✔  Completed step "generateNotes" of plugin "@semantic-release/release-notes-generator"
-[11:54:55 PM] [semantic-release] › ℹ  Start step "prepare" of plugin "@semantic-release/changelog"
-[11:54:55 PM] [semantic-release] [@semantic-release/changelog] › ℹ  Update /mnt/c/Users/Webhouse/builds/[secure]/0/mygroup/hello-go/CHANGELOG.md
-[11:54:55 PM] [semantic-release] › ✔  Completed step "prepare" of plugin "@semantic-release/changelog"
-[11:54:55 PM] [semantic-release] › ℹ  Start step "prepare" of plugin "@semantic-release/git"
-[11:55:02 PM] [semantic-release] [@semantic-release/git] › ℹ  Found 1 file(s) to commit
-[11:55:07 PM] [semantic-release] [@semantic-release/git] › ℹ  Prepared Git release: v1.3.1
-[11:55:07 PM] [semantic-release] › ✔  Completed step "prepare" of plugin "@semantic-release/git"
-[11:55:07 PM] [semantic-release] › ℹ  Start step "generateNotes" of plugin "@semantic-release/release-notes-generator"
-[11:55:07 PM] [semantic-release] › ✔  Completed step "generateNotes" of plugin "@semantic-release/release-notes-generator"
-[11:55:12 PM] [semantic-release] › ✔  Created tag v1.3.1
-[11:55:12 PM] [semantic-release] › ℹ  Start step "publish" of plugin "@semantic-release/gitlab"
-[11:55:14 PM] [semantic-release] [@semantic-release/gitlab] › ℹ  Published GitLab release: v1.3.1
-[11:55:14 PM] [semantic-release] › ✔  Completed step "publish" of plugin "@semantic-release/gitlab"
-[11:55:14 PM] [semantic-release] › ℹ  Start step "success" of plugin "@semantic-release/gitlab"
-[11:55:14 PM] [semantic-release] › ✔  Completed step "success" of plugin "@semantic-release/gitlab"
-[11:55:14 PM] [semantic-release] › ✔  Published release 1.3.1 on develop channel
-Cleaning up project directory and file based variables 00:00
-Job succeeded
+<img width="1899" height="1498" alt="feat-push" src="https://github.com/user-attachments/assets/c0b37d2d-810f-4cf6-a769-4229ad6da9b2" />
+
 ```
 
 ### (D) Cleanup Stage
 - **Status**: Passed
 
 ```bash
-Running with gitlab-runner 18.5.0 (bda84871)
-  on shell-runner 7vEJkJxfR, system ID: s_d3e36046c4ec
-Preparing the "shell" executor 00:00
-Using Shell (bash) executor...
-Preparing environment 00:00
-Running on Aceraspire7-Kite...
-Getting source from Git repository 00:41
-Gitaly correlation ID: 01K95PAF6XDXV5MJA32XZ9M3JT
-Fetching changes with git depth set to 20...
-Reinitialized existing Git repository in /mnt/c/Users/Webhouse/builds/7vEJkJxfR/0/mygroup/hello-go/.git/
-Checking out 6892fc04 as detached HEAD (ref is develop)...
-Removing node_modules/
-Skipping Git submodules setup
-Executing "step_script" stage of the job script 00:07
-$ if ! command -v git &> /dev/null; then echo "Installing git..."; apt-get update && apt-get install -y git; fi
-$ git config --global user.name "GitLab CI"
-$ git config --global user.email "ci-runner@gitlab.example.com"
-$ git remote set-url origin https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.example.com/mygroup/hello-go.git
-$ echo "Fetching all tags..."
-Fetching all tags...
-$ git fetch --tags --force
-$ echo "All tags (newest first):"
-All tags (newest first):
-$ git tag --sort=-creatordate
-v1.3.1
-v1.3.0
-v1.2.3
-v1.2.2
-v1.2.1
-v1.2.0
-$ TAGS=$(git tag --sort=-creatordate | tail -n +6)
-$ if [ -n "$TAGS" ]; then # collapsed multi-line command
-Deleting old tags (remote + local):
-Deleting tag: v1.2.0 (remote + local)
-To https://gitlab.example.com/mygroup/hello-go.git
- - [deleted]         v1.2.0
-Deleted tag 'v1.2.0' (was 6515cdb)
-$ echo "Fetching tags again after cleanup..."
-Fetching tags again after cleanup...
-$ git fetch --tags --force
-$ echo "Remaining tags (newest first):"
-Remaining tags (newest first):
-$ git tag --sort=-creatordate
-v1.3.1
-v1.3.0
-v1.2.3
-v1.2.2
-v1.2.1
-Cleaning up project directory and file based variables 00:00
-Job succeeded
+<img width="1899" height="1894" alt="feat-cleanup" src="https://github.com/user-attachments/assets/8b17fe21-0adb-41e1-bda1-1a398b3a8ff9" />
+
 ```
 
 ### 2 - Commit and Push (feat:)
 ##### Enter this in the Commit message:
 ```bash
-feat: changing minor (for changing the minor version)
+feat: changing patch (for changing the patch version)
 ```
 
 ### ***Pipelines:***
+
+```
+<img width="1920" height="1080" alt="fix changing patch pipeline" src="https://github.com/user-attachments/assets/8c79e862-d72c-488c-b9b8-27aa0ffaed98" />
+
+```
+
 ### (A) Build Stage
 - **Status**: Passed
 - **Executor**: Shell
 
 ```bash
-Running with gitlab-runner 18.5.0 (bda84871)
-  on shell-runner 7vEJkJxfR, system ID: s_d3e36046c4ec
-Preparing the "shell" executor 00:00
-Using Shell (bash) executor...
-Preparing environment 00:00
-Running on Aceraspire7-Kite...
-Getting source from Git repository 00:03
-Gitaly correlation ID: 01K95PHW7KP64B2JQ8HB8F9KQW
-Fetching changes with git depth set to 20...
-Reinitialized existing Git repository in /mnt/c/Users/Webhouse/builds/7vEJkJxfR/0/mygroup/hello-go/.git/
-Checking out 66bf0117 as detached HEAD (ref is develop)...
-Skipping Git submodules setup
-Executing "step_script" stage of the job script 00:38
-$ docker build -t $IMAGE_NAME:$TAG .
-#0 building with "default" instance using docker driver
-#1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile:
-#1 transferring dockerfile: 275B 0.1s done
-#1 DONE 0.5s
-#2 [internal] load metadata for docker.io/library/golang:1.22
-#2 DONE 0.0s
-#3 [internal] load metadata for docker.io/library/alpine:latest
-#3 DONE 0.0s
-#4 [internal] load .dockerignore
-#4 transferring context:
-#4 transferring context: 2B 0.1s done
-#4 DONE 0.7s
-#5 [builder 1/5] FROM docker.io/library/golang:1.22
-#5 DONE 0.0s
-#6 [stage-1 1/3] FROM docker.io/library/alpine:latest
-#6 DONE 0.0s
-#7 [internal] load build context
-#7 DONE 0.0s
-#7 [internal] load build context
-#7 transferring context: 62.63kB 3.8s
-#7 transferring context: 429.22kB 4.9s done
-#7 DONE 5.2s
-#8 [builder 2/5] WORKDIR /src
-#8 CACHED
-#9 [builder 3/5] COPY . .
-#9 DONE 3.4s
-#10 [builder 4/5] RUN go mod init example.com/hello || true
-#10 3.645 go: creating new go.mod: module example.com/hello
-#10 3.697 go: to add module requirements and sums:
-#10 3.697 	go mod tidy
-#10 DONE 4.3s
-#11 [builder 5/5] RUN go build -o app .
-#11 DONE 14.8s
-#12 [stage-1 2/3] WORKDIR /root/
-#12 CACHED
-#13 [stage-1 3/3] COPY --from=builder /src/app .
-#13 DONE 1.6s
-#14 exporting to image
-#14 exporting layers
-#14 exporting layers 0.8s done
-#14 writing image sha256:2cb3dc256bf6f562785d1c612a60ed10011f347f55eb2e0331321da41939a8ae
-#14 writing image sha256:2cb3dc256bf6f562785d1c612a60ed10011f347f55eb2e0331321da41939a8ae 0.1s done
-#14 naming to registry.gitlab.example.com:5050/mygroup/hello-go:latest 0.1s done
-#14 DONE 1.2s
-$ docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-Cleaning up project directory and file based variables 00:01
-Job succeeded
+<img width="1899" height="2158" alt="fix-build" src="https://github.com/user-attachments/assets/af9ed06b-a858-41dc-a99b-b3e0d7dfe95a" />
+
 ```
 
-### (B) Push Stage
+### (B) Release Stage
 - **Status**: Passed
 
 ```bash
-Running with gitlab-runner 18.5.0 (bda84871)
-  on shell-runner 7vEJkJxfR, system ID: s_d3e36046c4ec
-Preparing the "shell" executor 00:00
-Using Shell (bash) executor...
-Preparing environment 00:00
-Running on Aceraspire7-Kite...
-Getting source from Git repository 00:02
-Gitaly correlation ID: 01K95PP5BE64YK14VFTMD9B8D7
-Fetching changes with git depth set to 20...
-Reinitialized existing Git repository in /mnt/c/Users/Webhouse/builds/7vEJkJxfR/0/mygroup/hello-go/.git/
-Checking out 66bf0117 as detached HEAD (ref is develop)...
-Skipping Git submodules setup
-Executing "step_script" stage of the job script 00:05
-$ echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" registry.gitlab.example.com:5050 --password-stdin
-Login Succeeded
-$ VERSION=$(git describe --tags --abbrev=0 || echo "latest")
-$ docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$VERSION
-$ docker push $IMAGE_NAME:$TAG
-The push refers to repository [registry.gitlab.example.com:5050/mygroup/hello-go]
-3e9d50695e85: Preparing
-5f70bf18a086: Preparing
-256f393e029f: Preparing
-5f70bf18a086: Layer already exists
-256f393e029f: Layer already exists
-3e9d50695e85: Layer already exists
-latest: digest: sha256:22761e2fe1baf8a358160e79cd935cee23912db4ab0b4443e24415421ceb1e31 size: 945
-$ docker push $IMAGE_NAME:$VERSION
-The push refers to repository [registry.gitlab.example.com:5050/mygroup/hello-go]
-3e9d50695e85: Preparing
-5f70bf18a086: Preparing
-256f393e029f: Preparing
-5f70bf18a086: Layer already exists
-256f393e029f: Layer already exists
-3e9d50695e85: Layer already exists
-v1.3.1: digest: sha256:22761e2fe1baf8a358160e79cd935cee23912db4ab0b4443e24415421ceb1e31 size: 945
-$ docker push $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-The push refers to repository [registry.gitlab.example.com:5050/mygroup/hello-go]
-3e9d50695e85: Preparing
-5f70bf18a086: Preparing
-256f393e029f: Preparing
-256f393e029f: Layer already exists
-3e9d50695e85: Layer already exists
-5f70bf18a086: Layer already exists
-66bf0117: digest: sha256:22761e2fe1baf8a358160e79cd935cee23912db4ab0b4443e24415421ceb1e31 size: 945
-$ docker pull $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-66bf0117: Pulling from mygroup/hello-go
-Digest: sha256:22761e2fe1baf8a358160e79cd935cee23912db4ab0b4443e24415421ceb1e31
-Status: Image is up to date for registry.gitlab.example.com:5050/mygroup/hello-go:66bf0117
-registry.gitlab.example.com:5050/mygroup/hello-go:66bf0117
-$ docker pull $IMAGE_NAME:$VERSION
-v1.3.1: Pulling from mygroup/hello-go
-Digest: sha256:22761e2fe1baf8a358160e79cd935cee23912db4ab0b4443e24415421ceb1e31
-Status: Image is up to date for registry.gitlab.example.com:5050/mygroup/hello-go:v1.3.1
-registry.gitlab.example.com:5050/mygroup/hello-go:v1.3.1
-Cleaning up project directory and file based variables 00:00
-Job succeeded
+<img width="1899" height="2950" alt="fix-release" src="https://github.com/user-attachments/assets/37e5df6d-68f2-444c-8fc3-b36415b1f184" />
+
 ```
 
-### (C) Release Stage
+### (C) Push Stage
 - **Status**: Passed
 
 ```bash
-Running with gitlab-runner 18.5.0 (bda84871)
-  on shell-runner 7vEJkJxfR, system ID: s_d3e36046c4ec
-Preparing the "shell" executor 00:00
-Using Shell (bash) executor...
-Preparing environment 00:00
-Running on Aceraspire7-Kite...
-Getting source from Git repository 00:03
-Gitaly correlation ID: 01K95PPFER01XSXNRZ4207XHP6
-Fetching changes with git depth set to 20...
-Reinitialized existing Git repository in /mnt/c/Users/Webhouse/builds/7vEJkJxfR/0/mygroup/hello-go/.git/
-Checking out 66bf0117 as detached HEAD (ref is develop)...
-Skipping Git submodules setup
-Executing "step_script" stage of the job script 02:35
-$ npm ci
-npm warn deprecated semver-diff@5.0.0: Deprecated as the semver package now supports this built-in.
-added 371 packages, and audited 572 packages in 1m
-115 packages are looking for funding
-  run `npm fund` for details
-4 moderate severity vulnerabilities
-To address all issues (including breaking changes), run:
-  npm audit fix --force
-Run `npm audit` for details.
-$ npm install --save-dev conventional-changelog-conventionalcommits
-up to date, audited 572 packages in 8s
-115 packages are looking for funding
-  run `npm fund` for details
-4 moderate severity vulnerabilities
-To address all issues (including breaking changes), run:
-  npm audit fix --force
-Run `npm audit` for details.
-$ npx semantic-release
-[12:03:44 AM] [semantic-release] › ℹ  Running semantic-release version 25.0.1
-[12:04:00 AM] [semantic-release] › ✔  Loaded plugin "verifyConditions" from "@semantic-release/gitlab"
-[12:04:00 AM] [semantic-release] › ✔  Loaded plugin "verifyConditions" from "@semantic-release/changelog"
-[12:04:00 AM] [semantic-release] › ✔  Loaded plugin "verifyConditions" from "@semantic-release/git"
-[12:04:00 AM] [semantic-release] › ✔  Loaded plugin "analyzeCommits" from "@semantic-release/commit-analyzer"
-[12:04:00 AM] [semantic-release] › ✔  Loaded plugin "generateNotes" from "@semantic-release/release-notes-generator"
-[12:04:00 AM] [semantic-release] › ✔  Loaded plugin "prepare" from "@semantic-release/changelog"
-[12:04:00 AM] [semantic-release] › ✔  Loaded plugin "prepare" from "@semantic-release/git"
-[12:04:00 AM] [semantic-release] › ✔  Loaded plugin "publish" from "@semantic-release/gitlab"
-[12:04:00 AM] [semantic-release] › ✔  Loaded plugin "success" from "@semantic-release/gitlab"
-[12:04:00 AM] [semantic-release] › ✔  Loaded plugin "fail" from "@semantic-release/gitlab"
-[12:04:11 AM] [semantic-release] › ✔  Run automated release from branch develop on repository https://gitlab.example.com/mygroup/hello-go.git
-[12:04:12 AM] [semantic-release] › ✔  Allowed to push to the Git repository
-[12:04:12 AM] [semantic-release] › ℹ  Start step "verifyConditions" of plugin "@semantic-release/gitlab"
-[12:04:12 AM] [semantic-release] [@semantic-release/gitlab] › ℹ  Verify GitLab authentication (https://gitlab.example.com/api/v4)
-[12:04:12 AM] [semantic-release] › ✔  Completed step "verifyConditions" of plugin "@semantic-release/gitlab"
-[12:04:12 AM] [semantic-release] › ℹ  Start step "verifyConditions" of plugin "@semantic-release/changelog"
-[12:04:12 AM] [semantic-release] › ✔  Completed step "verifyConditions" of plugin "@semantic-release/changelog"
-[12:04:12 AM] [semantic-release] › ℹ  Start step "verifyConditions" of plugin "@semantic-release/git"
-[12:04:12 AM] [semantic-release] › ✔  Completed step "verifyConditions" of plugin "@semantic-release/git"
-[12:04:12 AM] [semantic-release] › ℹ  Found git tag v1.3.1 associated with version 1.3.1 on branch develop
-[12:04:13 AM] [semantic-release] › ℹ  Found 1 commits since last release
-[12:04:13 AM] [semantic-release] › ℹ  Start step "analyzeCommits" of plugin "@semantic-release/commit-analyzer"
-[12:04:13 AM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  Analyzing commit: feat: changing minor
-[12:04:13 AM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  The release type for the commit is minor
-[12:04:13 AM] [semantic-release] [@semantic-release/commit-analyzer] › ℹ  Analysis of 1 commits complete: minor release
-[12:04:13 AM] [semantic-release] › ✔  Completed step "analyzeCommits" of plugin "@semantic-release/commit-analyzer"
-[12:04:13 AM] [semantic-release] › ℹ  The next release version is 1.4.0
-[12:04:13 AM] [semantic-release] › ℹ  Start step "generateNotes" of plugin "@semantic-release/release-notes-generator"
-[12:04:13 AM] [semantic-release] › ✔  Completed step "generateNotes" of plugin "@semantic-release/release-notes-generator"
-[12:04:13 AM] [semantic-release] › ℹ  Start step "prepare" of plugin "@semantic-release/changelog"
-[12:04:13 AM] [semantic-release] [@semantic-release/changelog] › ℹ  Update /mnt/c/Users/Webhouse/builds/[secure]/0/mygroup/hello-go/CHANGELOG.md
-[12:04:13 AM] [semantic-release] › ✔  Completed step "prepare" of plugin "@semantic-release/changelog"
-[12:04:13 AM] [semantic-release] › ℹ  Start step "prepare" of plugin "@semantic-release/git"
-[12:04:20 AM] [semantic-release] [@semantic-release/git] › ℹ  Found 1 file(s) to commit
-[12:04:23 AM] [semantic-release] [@semantic-release/git] › ℹ  Prepared Git release: v1.4.0
-[12:04:23 AM] [semantic-release] › ✔  Completed step "prepare" of plugin "@semantic-release/git"
-[12:04:23 AM] [semantic-release] › ℹ  Start step "generateNotes" of plugin "@semantic-release/release-notes-generator"
-[12:04:24 AM] [semantic-release] › ✔  Completed step "generateNotes" of plugin "@semantic-release/release-notes-generator"
-[12:04:28 AM] [semantic-release] › ✔  Created tag v1.4.0
-[12:04:28 AM] [semantic-release] › ℹ  Start step "publish" of plugin "@semantic-release/gitlab"
-[12:04:29 AM] [semantic-release] [@semantic-release/gitlab] › ℹ  Published GitLab release: v1.4.0
-[12:04:29 AM] [semantic-release] › ✔  Completed step "publish" of plugin "@semantic-release/gitlab"
-[12:04:29 AM] [semantic-release] › ℹ  Start step "success" of plugin "@semantic-release/gitlab"
-[12:04:29 AM] [semantic-release] › ✔  Completed step "success" of plugin "@semantic-release/gitlab"
-[12:04:29 AM] [semantic-release] › ✔  Published release 1.4.0 on develop channel
-Cleaning up project directory and file based variables 00:00
-Job succeeded
+<img width="1899" height="1498" alt="fix-push" src="https://github.com/user-attachments/assets/9897a7df-4b46-42ac-b38d-f7172d4723ab" />
+
 ```
 
 ### (D) Cleanup Stage
 - **Status**: Passed
 
 ```bash
-Running with gitlab-runner 18.5.0 (bda84871)
-  on shell-runner 7vEJkJxfR, system ID: s_d3e36046c4ec
-Preparing the "shell" executor 00:00
-Using Shell (bash) executor...
-Preparing environment 00:00
-Running on Aceraspire7-Kite...
-Getting source from Git repository 00:42
-Gitaly correlation ID: 01K95PVD1VHYNPNFBMF9S2YN57
-Fetching changes with git depth set to 20...
-Reinitialized existing Git repository in /mnt/c/Users/Webhouse/builds/7vEJkJxfR/0/mygroup/hello-go/.git/
-Checking out 66bf0117 as detached HEAD (ref is develop)...
-Removing node_modules/
-Skipping Git submodules setup
-Executing "step_script" stage of the job script 00:06
-$ if ! command -v git &> /dev/null; then echo "Installing git..."; apt-get update && apt-get install -y git; fi
-$ git config --global user.name "GitLab CI"
-$ git config --global user.email "ci-runner@gitlab.example.com"
-$ git remote set-url origin https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.example.com/mygroup/hello-go.git
-$ echo "Fetching all tags..."
-Fetching all tags...
-$ git fetch --tags --force
-$ echo "All tags (newest first):"
-All tags (newest first):
-$ git tag --sort=-creatordate
-v1.4.0
-v1.3.1
-v1.3.0
-v1.2.3
-v1.2.2
-v1.2.1
-$ TAGS=$(git tag --sort=-creatordate | tail -n +6)
-$ if [ -n "$TAGS" ]; then # collapsed multi-line command
-Deleting old tags (remote + local):
-Deleting tag: v1.2.1 (remote + local)
-To https://gitlab.example.com/mygroup/hello-go.git
- - [deleted]         v1.2.1
-Deleted tag 'v1.2.1' (was 0fc19d5)
-$ echo "Fetching tags again after cleanup..."
-Fetching tags again after cleanup...
-$ git fetch --tags --force
-$ echo "Remaining tags (newest first):"
-Remaining tags (newest first):
-$ git tag --sort=-creatordate
-v1.4.0
-v1.3.1
-v1.3.0
-v1.2.3
-v1.2.2
-Cleaning up project directory and file based variables 00:00
-Job succeeded
+<img width="1899" height="1894" alt="fix-cleanup" src="https://github.com/user-attachments/assets/ea9e625c-2133-4381-ae35-367c73c5645f" />
+
 ```
