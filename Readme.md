@@ -689,7 +689,7 @@ Click the dropdown (˅) -> Click the "Create new branch and commit" -> Write "de
 ```
 ### ***Pipelines:***
 
-<img width="1920" height="1080" alt="feat-container-registry" src="https://github.com/user-attachments/assets/f20f490e-041a-4d17-9e96-6c4325adff59" />
+<img width="1920" height="1080" alt="feat changing minor pipeline" src="https://github.com/user-attachments/assets/0e21d2af-4dbe-45c9-9e84-8f0909390e7c" />
 
 ### (A) Build Stage
 - **Status**: Passed
@@ -715,7 +715,7 @@ Click the dropdown (˅) -> Click the "Create new branch and commit" -> Write "de
 
 ### (E) Inside Contianer Registry
 
-<img width="1920" height="1080" alt="feat-container-registry" src="https://github.com/user-attachments/assets/01d2efff-b658-42a4-80a5-303864cf0c7a" />
+<img width="1920" height="1080" alt="feat-container-registry" src="https://github.com/user-attachments/assets/36985263-a5e8-43db-ac79-3c924f12f377" />
 
 ### 2 - Commit and Push (feat:)
 ##### Enter this in the Commit message:
