@@ -695,34 +695,23 @@ Click the dropdown (˅) -> Click the "Create new branch and commit" -> Write "de
 - **Status**: Passed
 - **Executor**: Shell
 
-```bash
 <img width="1899" height="2158" alt="feat-build" src="https://github.com/user-attachments/assets/8bf5cc23-3ad2-4b19-bbed-ebcfaf540caf" />
-
-```
 
 ### (B) Release Stage
 - **Status**: Passed
 
-```bash
 <img width="1899" height="2950" alt="feat-release" src="https://github.com/user-attachments/assets/9675ac80-22cc-4ace-8d39-7a2e017cf574" />
 
-```
 
 ### (C) Push Stage
 - **Status**: Passed
 
-```bash
 <img width="1899" height="1498" alt="feat-push" src="https://github.com/user-attachments/assets/c0b37d2d-810f-4cf6-a769-4229ad6da9b2" />
-
-```
 
 ### (D) Cleanup Stage
 - **Status**: Passed
 
-```bash
 <img width="1899" height="1894" alt="feat-cleanup" src="https://github.com/user-attachments/assets/8b17fe21-0adb-41e1-bda1-1a398b3a8ff9" />
-
-```
 
 ### 2 - Commit and Push (feat:)
 ##### Enter this in the Commit message:
@@ -732,40 +721,27 @@ feat: changing patch (for changing the patch version)
 
 ### ***Pipelines:***
 
-```
 <img width="1920" height="1080" alt="fix changing patch pipeline" src="https://github.com/user-attachments/assets/8c79e862-d72c-488c-b9b8-27aa0ffaed98" />
 
-```
 
 ### (A) Build Stage
 - **Status**: Passed
 - **Executor**: Shell
 
-```bash
 <img width="1899" height="2158" alt="fix-build" src="https://github.com/user-attachments/assets/af9ed06b-a858-41dc-a99b-b3e0d7dfe95a" />
 
-```
 
 ### (B) Release Stage
 - **Status**: Passed
 
-```bash
 <img width="1899" height="2950" alt="fix-release" src="https://github.com/user-attachments/assets/37e5df6d-68f2-444c-8fc3-b36415b1f184" />
-
-```
 
 ### (C) Push Stage
 - **Status**: Passed
 
-```bash
 <img width="1899" height="1498" alt="fix-push" src="https://github.com/user-attachments/assets/9897a7df-4b46-42ac-b38d-f7172d4723ab" />
-
-```
 
 ### (D) Cleanup Stage
 - **Status**: Passed
 
-```bash
 <img width="1899" height="1894" alt="fix-cleanup" src="https://github.com/user-attachments/assets/ea9e625c-2133-4381-ae35-367c73c5645f" />
-
-```
