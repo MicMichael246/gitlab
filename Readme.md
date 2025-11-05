@@ -677,10 +677,10 @@ My Project -> Settings -> Repository -> Protected branches
 My Repository -> Code -> Open with Web IDE -> Source Control (Ctrl+Shift+G)
 ```
 
-### 1 - Commit and Push (fix:)
+### 1 - Commit and Push (feat:)
 ##### (A) Enter this in the Commit message:
 ```bash
-fix: changing minor (for changing the minor version)
+feat: changing minor (for changing the minor version)
 ```
 
 ##### (B) Then:
@@ -689,7 +689,9 @@ Click the dropdown (˅) -> Click the "Create new branch and commit" -> Write "de
 ```
 ### ***Pipelines:***
 
-<img width="1920" height="1080" alt="feat changing minor pipeline" src="https://github.com/user-attachments/assets/0e21d2af-4dbe-45c9-9e84-8f0909390e7c" />
+### Changing Minor Pipeline
+
+<img width="1920" height="1080" alt="feat changing minor pipeline" src="https://github.com/user-attachments/assets/0cf78d0c-b936-4de9-a27a-55f5c139d888" />
 
 ### (A) Build Stage
 - **Status**: Passed
@@ -724,6 +726,8 @@ feat: changing patch (for changing the patch version)
 ```
 
 ### ***Pipelines:***
+
+### Changing Patch Pipeline
 
 <img width="1920" height="1080" alt="fix changing patch pipeline" src="https://github.com/user-attachments/assets/8c79e862-d72c-488c-b9b8-27aa0ffaed98" />
 
