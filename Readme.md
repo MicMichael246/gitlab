@@ -689,10 +689,7 @@ Click the dropdown (˅) -> Click the "Create new branch and commit" -> Write "de
 ```
 ### ***Pipelines:***
 
-```
 <img width="1920" height="1080" alt="feat changing minor pipeline" src="https://github.com/user-attachments/assets/4ee3dac5-4f00-46c5-917a-b761b97ea161" />
-
-```
 
 ### (A) Build Stage
 - **Status**: Passed
