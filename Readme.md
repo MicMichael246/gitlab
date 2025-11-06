@@ -760,3 +760,8 @@ feat: changing patch (for changing the patch version)
 - **Set these settings**
 
 <img width="1899" height="1366" alt="Deleting Old Tags" src="https://github.com/user-attachments/assets/44e51b49-9f6a-40fc-8ea1-90858e685f2c" />
+
+- **After applying settings**
+
+<img width="1920" height="1080" alt="Deleting Old Tags -2" src="https://github.com/user-attachments/assets/8421e81d-0649-441a-96c1-713b91ddaffd" />
+
