@@ -1,6 +1,5 @@
 # GitLab Self Host Setup with Docker Compose and HAProxy and Configuring Semantic Versioning
 
-
 ## (1) Hosts Configuration
 
 ### Windows
@@ -690,7 +689,7 @@ Click the dropdown (˅) -> Click the "Create new branch and commit" -> Write "de
 ```
 ### ***Pipelines:***
 
-### Changing Minor Pipeline
+- **Changing Minor Pipeline**
 
 <img width="1920" height="1080" alt="feat changing minor pipeline" src="https://github.com/user-attachments/assets/0cf78d0c-b936-4de9-a27a-55f5c139d888" />
 
@@ -728,7 +727,7 @@ feat: changing patch (for changing the patch version)
 
 ### ***Pipelines:***
 
-### Changing Patch Pipeline
+- **Changing Patch Pipeline**
 
 <img width="1920" height="1080" alt="fix changing patch pipeline" src="https://github.com/user-attachments/assets/8c79e862-d72c-488c-b9b8-27aa0ffaed98" />
 
@@ -758,3 +757,7 @@ feat: changing patch (for changing the patch version)
 ### (E) Inside Contianer Registry
 
 <img width="1920" height="1080" alt="fix-container-registry" src="https://github.com/user-attachments/assets/bc510896-88b8-4e55-b510-b6527031662f" />
+
+## (10) Deleting Old Tags
+
+<img width="1899" height="1366" alt="Deleting Old Tags" src="https://github.com/user-attachments/assets/44e51b49-9f6a-40fc-8ea1-90858e685f2c" />
