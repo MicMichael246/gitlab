@@ -445,7 +445,6 @@ build:
 #2 (Also add the release stage for semantic versioning)
 release:
   stage: release
-  image: node:24-bullseye
   tags:
     - shell-runner
   services:
@@ -566,7 +565,6 @@ build:
 #2- Updated
 release:
   stage: release
-  image: node:24-bullseye
   tags:
     - shell-runner
   services:
@@ -608,7 +606,6 @@ push:
 #4- (Also add the cleanup stage for semantic versioning to delete the older versions and keeping the last 5 new versions)
 cleanup_old_releases:
   stage: cleanup
-  image: ubuntu:22.04
   tags:
     - shell-runner
   before_script:
@@ -759,5 +756,7 @@ feat: changing patch (for changing the patch version)
 <img width="1920" height="1080" alt="fix-container-registry" src="https://github.com/user-attachments/assets/bc510896-88b8-4e55-b510-b6527031662f" />
 
 ## (10) Deleting Old Tags
+
+- **Set these settings**
 
 <img width="1899" height="1366" alt="Deleting Old Tags" src="https://github.com/user-attachments/assets/44e51b49-9f6a-40fc-8ea1-90858e685f2c" />
