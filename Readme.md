@@ -315,8 +315,21 @@ https://gitlab.example.com
 ### main.go
 ```go
 package main
-import "fmt"
-func main(){ fmt.Println("Hello from Go!") }
+
+import (
+    "fmt"
+    "net/http"
+)
+
+func handler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "Hello from Go! 🚀")
+}
+
+func main() {
+    http.HandleFunc("/", handler)
+    fmt.Println("Server started on port 6060")
+    http.ListenAndServe(":6060", nil)
+}
 ```
 
 ### Dockerfile
@@ -332,6 +345,7 @@ RUN go build -o app .
 FROM alpine:latest
 WORKDIR /root/
 COPY --from=builder /src/app .
+EXPOSE 6060
 CMD ["./app"]
 ```
 
@@ -766,3 +780,345 @@ feat: changing patch (for changing the patch version)
 
 <img width="1920" height="1080" alt="Deleting Old Tags -2" src="https://github.com/user-attachments/assets/8421e81d-0649-441a-96c1-713b91ddaffd" />
 
+
+## (11) Create a repository inside Gitlab repository and create deployment & service files
+
+- **k8s**
+
+deployment.yaml
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-go
+  labels:
+    app: hello-go
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-go
+  template:
+    metadata:
+      labels:
+        app: hello-go
+    spec:
+      containers:
+      - name: hello-go
+        image: registry.gitlab.example.com:5050/mygroup/hello-go:v4.0.0
+        ports:
+        - containerPort: 6060
+      imagePullSecrets:
+      - name: gitlab-registry   # <-- make sure this secret exists
+```
+![alt text](<2025-11-10 23 19 56.png>)
+
+service.yaml
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-go-service
+spec:
+  selector:
+    app: hello-go
+  ports:
+  - port: 6060
+    targetPort: 6060
+  type: NodePort
+```
+
+## (12) Creating Kind Cluster
+```bash
+root@Aceraspire7-Kite:~# kind create cluster --name kind-cluster --config kind-config.yaml --image kindest/node:v1.29.2
+Creating cluster "kind-cluster" ...
+ ✓ Ensuring node image (kindest/node:v1.29.2) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-kind-cluster"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-kind-cluster
+
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+```
+
+```bash
+root@Aceraspire7-Kite:~# kubectl get nodes
+NAME                         STATUS   ROLES           AGE     VERSION
+kind-cluster-control-plane   Ready    control-plane   4m44s   v1.29.2
+```
+
+## (13) Create Token in Gitlab We will use this
+```bash
+argo-pat-1:
+read_api, read_repository, write_repository
+
+
+Copy the Token We will use it
+```
+![alt text](<2025-11-10 23 06 29.png>)
+
+
+## (14) Installing & Creating ArgoCD Pod inside argocd namespace & other stuffs
+
+```bash
+root@Aceraspire7-Kite:~# curl -O https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 1434k  100 1434k    0     0   164k      0  0:00:08  0:00:08 --:--:--  303k
+
+
+root@Aceraspire7-Kite:~# kubectl get pods -n argocd
+No resources found in argocd namespace.
+
+root@Aceraspire7-Kite:~# kubectl create namespace argocd
+
+
+root@Aceraspire7-Kite:~# kubectl apply -n argocd -f install.yaml
+customresourcedefinition.apiextensions.k8s.io/applications.argoproj.io created
+customresourcedefinition.apiextensions.k8s.io/applicationsets.argoproj.io created
+customresourcedefinition.apiextensions.k8s.io/appprojects.argoproj.io created
+serviceaccount/argocd-application-controller created
+serviceaccount/argocd-applicationset-controller created
+serviceaccount/argocd-dex-server created
+serviceaccount/argocd-notifications-controller created
+serviceaccount/argocd-redis created
+serviceaccount/argocd-repo-server created
+serviceaccount/argocd-server created
+role.rbac.authorization.k8s.io/argocd-application-controller created
+role.rbac.authorization.k8s.io/argocd-applicationset-controller created
+role.rbac.authorization.k8s.io/argocd-dex-server created
+role.rbac.authorization.k8s.io/argocd-notifications-controller created
+role.rbac.authorization.k8s.io/argocd-redis created
+role.rbac.authorization.k8s.io/argocd-server created
+clusterrole.rbac.authorization.k8s.io/argocd-application-controller created
+clusterrole.rbac.authorization.k8s.io/argocd-applicationset-controller created
+clusterrole.rbac.authorization.k8s.io/argocd-server created
+rolebinding.rbac.authorization.k8s.io/argocd-application-controller created
+rolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller created
+rolebinding.rbac.authorization.k8s.io/argocd-dex-server created
+rolebinding.rbac.authorization.k8s.io/argocd-notifications-controller created
+rolebinding.rbac.authorization.k8s.io/argocd-redis created
+rolebinding.rbac.authorization.k8s.io/argocd-server created
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller created
+clusterrolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller created
+clusterrolebinding.rbac.authorization.k8s.io/argocd-server created
+configmap/argocd-cm created
+configmap/argocd-cmd-params-cm created
+configmap/argocd-gpg-keys-cm created
+configmap/argocd-notifications-cm created
+configmap/argocd-rbac-cm created
+configmap/argocd-ssh-known-hosts-cm created
+configmap/argocd-tls-certs-cm created
+secret/argocd-notifications-secret created
+secret/argocd-secret created
+service/argocd-applicationset-controller created
+service/argocd-dex-server created
+service/argocd-metrics created
+service/argocd-notifications-controller-metrics created
+service/argocd-redis created
+service/argocd-repo-server created
+service/argocd-server created
+service/argocd-server-metrics created
+deployment.apps/argocd-applicationset-controller created
+deployment.apps/argocd-dex-server created
+deployment.apps/argocd-notifications-controller created
+deployment.apps/argocd-redis created
+deployment.apps/argocd-repo-server created
+deployment.apps/argocd-server created
+statefulset.apps/argocd-application-controller created
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy created
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy created
+networkpolicy.networking.k8s.io/argocd-dex-server-network-policy created
+networkpolicy.networking.k8s.io/argocd-notifications-controller-network-policy created
+networkpolicy.networking.k8s.io/argocd-redis-network-policy created
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy created
+networkpolicy.networking.k8s.io/argocd-server-network-policy created
+
+
+root@Aceraspire7-Kite:~# kubectl get pods -n argocd
+NAME                                                READY   STATUS              RESTARTS   AGE
+argocd-application-controller-0                     0/1     ContainerCreating   0          5m27s
+argocd-applicationset-controller-6bdfdfc75f-wxb5f   0/1     ImagePullBackOff    0          6m
+argocd-dex-server-7bf9ff885c-jjg5z                  0/1     PodInitializing     0          5m59s
+argocd-notifications-controller-6d565dc8d4-m9xsz    1/1     Running             0          5m53s
+argocd-redis-585584c457-t4kdt                       0/1     Init:0/1            0          5m49s
+argocd-repo-server-685b5b8544-lbbmk                 0/1     Init:0/1            0          5m40s
+argocd-server-b54c954f9-65qq8
+
+
+root@Aceraspire7-Kite:~# kubectl get pods -n argocd
+NAME                                                READY   STATUS    RESTARTS   AGE
+argocd-application-controller-0                     1/1     Running   0          14m
+argocd-applicationset-controller-6bdfdfc75f-wxb5f   1/1     Running   0          14m
+argocd-dex-server-7bf9ff885c-jjg5z                  1/1     Running   0          14m
+argocd-notifications-controller-6d565dc8d4-m9xsz    1/1     Running   0          14m
+argocd-redis-585584c457-t4kdt                       1/1     Running   0          14m
+argocd-repo-server-685b5b8544-lbbmk                 1/1     Running   0          14m
+argocd-server-b54c954f9-65qq8                       1/1     Running   0          14m
+
+
+------------------------------------------------------------------
+
+
+Create a ConfigMap for your GitLab certificate:
+
+kubectl -n argocd create configmap gitlab-cert \
+  --from-file=gitlab.example.com.crt=/root/gitlab/ssl/gitlab.example.com.crt
+
+
+Patch the argocd-repo-server deployment to mount it:
+
+(A)- Add the volume mount to the container:
+kubectl -n argocd patch deployment argocd-repo-server \
+  --type='json' \
+  -p='[{"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/-", "value":{"name":"gitlab-cert","mountPath":"/etc/ssl/certs/gitlab.example.com.crt","subPath":"gitlab.example.com.crt"}}]'
+
+
+(B)- Add the volume to the pod spec:
+kubectl -n argocd patch deployment argocd-repo-server \
+  --type='json' \
+  -p='[{"op": "add", "path": "/spec/template/spec/volumes/-", "value":{"name":"gitlab-cert","configMap":{"name":"gitlab-cert"}}}]'
+
+
+(C)- Restart the repo server:
+kubectl -n argocd rollout restart deployment argocd-repo-server
+
+
+------------------------------------------------------------------
+
+
+root@Aceraspire7-Kite:~# kubectl get svc -n argocd
+NAME                                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+argocd-applicationset-controller          ClusterIP   10.96.214.179   <none>        7000/TCP,8080/TCP            15m
+argocd-dex-server                         ClusterIP   10.96.216.75    <none>        5556/TCP,5557/TCP,5558/TCP   15m
+argocd-metrics                            ClusterIP   10.96.106.231   <none>        8082/TCP                     15m
+argocd-notifications-controller-metrics   ClusterIP   10.96.244.37    <none>        9001/TCP                     15m
+argocd-redis                              ClusterIP   10.96.164.79    <none>        6379/TCP                     15m
+argocd-repo-server                        ClusterIP   10.96.48.15     <none>        8081/TCP,8084/TCP            14m
+argocd-server                             ClusterIP   10.96.252.217   <none>        80/TCP,443/TCP               14m
+argocd-server-metrics                     ClusterIP   10.96.135.49    <none>        8083/TCP                     14m
+```
+
+![alt text](<2025-11-10 22 59 56.png>)
+
+
+## (15) Gitlab-CLI-Installation & Adding Repository to ArgoCD
+```bash
+root@Aceraspire7-Kite:~/gitlab/ssl# curl -v -L -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+ 99  203M   99  203M    0     0   174k      0  0:19:56  0:19:55  0:00:01  135k* TLSv1.2 (IN), TLS header, Supplemental data (23):
+{ [5 bytes data]
+* TLSv1.2 (IN), TLS header, Supplemental data (23):
+{ [5 bytes data]
+* TLSv1.2 (IN), TLS header, Supplemental data (23):
+{ [5 bytes data]
+* TLSv1.2 (IN), TLS header, Supplemental data (23):
+{ [5 bytes data]
+* TLSv1.2 (IN), TLS header, Supplemental data (23):
+{ [5 bytes data]
+* TLSv1.2 (IN), TLS header, Supplemental data (23):
+{ [5 bytes data]
+* TLSv1.2 (IN), TLS header, Supplemental data (23):
+{ [5 bytes data]
+100  203M  100  203M    0     0   174k      0  0:19:56  0:19:56 --:--:--  135k
+* Connection #1 to host release-assets.githubusercontent.com left intact
+
+
+root@Aceraspire7-Kite:~/gitlab/ssl# chmod +x argocd
+
+
+root@Aceraspire7-Kite:~/gitlab/ssl# sudo mv argocd /usr/local/bin/
+
+
+root@Aceraspire7-Kite:~/gitlab/ssl# argocd version
+argocd: v3.2.0+66b2f30
+  BuildDate: 2025-11-04T15:21:01Z
+  GitCommit: 66b2f302d91a42cc151808da0eec0846bbe1062c
+  GitTreeState: clean
+  GoVersion: go1.25.0
+  Compiler: gc
+  Platform: linux/amd64
+{"level":"fatal","msg":"Argo CD server address unspecified","time":"2025-11-10T20:57:50+03:30"}
+
+
+------------------------------------------------------------------
+
+
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
+
+
+root@Aceraspire7-Kite:~/gitlab/ssl# argocd login localhost:9090 --username admin --password <ArgoCD-Password> --insecure
+'admin:login' logged in successfully
+Context 'localhost:9090' updated
+
+
+------------------------------------------------------------------
+
+
+root@Aceraspire7-Kite:~# argocd repo add https://gitlab.example.com/mygroup/hello-go.git   --username root   --password <Access-Token>   --name gitlab-hello-go
+Repository 'https://gitlab.example.com/mygroup/hello-go.git' added
+
+
+root@Aceraspire7-Kite:~# argocd repo list
+TYPE  NAME             REPO                                             INSECURE  OCI    LFS    CREDS  STATUS      MESSAGE  PROJECT
+git   gitlab-hello-go  https://gitlab.example.com/mygroup/hello-go.git  false     false  false  false  Successful
+
+
+------------------------------------------------------------------
+
+
+***❗Error❗***
+
+root@Aceraspire7-Kite:~# argocd app create hello-go \
+  --repo https://gitlab.example.com/mygroup/hello-go.git \
+  --path k8s \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace myapp \
+  --sync-policy automated \
+  --self-heal
+{"level":"fatal","msg":"rpc error: code = InvalidArgument desc = application spec for hello-go is invalid: InvalidSpecError: Unable to generate manifests in k8s: rpc error: code = Unknown desc = k8s: app path does not exist","time":"2025-11-10T21:50:36+03:30"}
+
+
+***✅Fix✅***
+
+root@Aceraspire7-Kite:~# argocd app create hello-go \
+  --repo https://gitlab.example.com/mygroup/hello-go.git \
+  --path k8s \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace myapp \
+  --sync-policy automated \
+  --self-heal \
+  --revision develop
+application 'hello-go' created
+
+
+------------------------------------------------------------------
+
+
+root@Aceraspire7-Kite:~# argocd app list
+NAME             CLUSTER                         NAMESPACE  PROJECT  STATUS  HEALTH       SYNCPOLICY  CONDITIONS  REPO                                             PATH  TARGET
+argocd/hello-go  https://kubernetes.default.svc  myapp      default  Synced  Progressing  Auto        <none>      https://gitlab.example.com/mygroup/hello-go.git  k8s   develop
+```
+
+![alt text](<2025-11-10 22 58 58.png>)
+
+## (16) Visiting ArgoCD UI
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
+
+
+root@Aceraspire7-Kite:~# kubectl port-forward -n argocd svc/argocd-server 9090:443
+Forwarding from 127.0.0.1:9090 -> 8080
+Forwarding from [::1]:9090 -> 8080
+Handling connection for 9090
+Handling connection for 9090
+```
+![alt text](<2025-11-10 23 19 44.png>)
+
+![alt text](<2025-11-10 22 38 53.png>)
+
+![alt text](<2025-11-10 22 38 45.png>)
