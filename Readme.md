@@ -653,6 +653,36 @@ cleanup_old_releases:
   needs:
     - release
   when: on_success
+
+
+#5- Updates the Deployment file
+update_k8s_deployment:
+  stage: push
+  tags:
+    - shell-runner
+  needs:
+    - push
+  before_script:
+    - if ! command -v git &> /dev/null; then apt-get update && apt-get install -y git; fi
+    - git config --global user.name "GitLab CI"
+    - git config --global user.email "ci-runner@gitlab.example.com"
+    - git remote set-url origin https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.example.com/mygroup/hello-go.git
+  script:
+    - echo "Fetching latest tags..."
+    - git fetch --tags --force
+    - VERSION=$(git tag --sort=-creatordate | head -n 1)
+    - echo "Latest version detected: $VERSION"
+
+    # Update deployment.yaml with new image tag
+    - echo "Updating k8s/deployment.yaml with $VERSION"
+    - sed -i "s|\(image:.*hello-go:\).*|\1$VERSION|g" k8s/deployment.yaml
+
+    # Commit and push the change
+    - git add k8s/deployment.yaml
+    - git commit -m "chore(ci): update deployment to $VERSION [skip ci]" || echo "No changes to commit"
+    - git push origin develop
+  only:
+    - develop
 ```
 
 #### (D) You Should Push it to "develop" branch:
@@ -1132,3 +1162,13 @@ Handling connection for 9090
 
 <img width="1920" height="1080" alt="2025-11-10 22 38 45" src="https://github.com/user-attachments/assets/7024cac1-9b2f-4d33-bf0d-62843e12da0a" />
 
+
+## (16) Checking the Pod Deployment
+```bash
+root@Aceraspire7-Kite:~# kubectl get pods -n myapp
+NAME                        READY   STATUS   RESTARTS   AGE
+hello-go-56787d8758-r9zrv   1/1     Running  0          23m
+hello-go-5b8fc978dc-4g29b   1/1     Running  0          8m33s
+```
+
+<img width="874" height="154" alt="2025-11-11 20 30 14" src="https://github.com/user-attachments/assets/b60138e6-7a0c-4b3a-b44b-9d0e9f9879b6" />
