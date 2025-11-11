@@ -811,7 +811,10 @@ spec:
       imagePullSecrets:
       - name: gitlab-registry   # <-- make sure this secret exists
 ```
-![alt text](<2025-11-10 23 19 56.png>)
+
+
+<img width="1920" height="1080" alt="2025-11-10 23 19 56" src="https://github.com/user-attachments/assets/a63e9a4c-1497-4ada-abad-fec47614ea73" />
+
 
 service.yaml
 ```yaml
@@ -860,7 +863,10 @@ read_api, read_repository, write_repository
 
 Copy the Token We will use it
 ```
-![alt text](<2025-11-10 23 06 29.png>)
+
+
+<img width="1920" height="1080" alt="2025-11-10 23 06 29" src="https://github.com/user-attachments/assets/48e70e1a-f295-4090-89d4-afadd857bcfa" />
+
 
 
 ## (14) Installing & Creating ArgoCD Pod inside argocd namespace & other stuffs
@@ -1004,7 +1010,9 @@ argocd-server                             ClusterIP   10.96.252.217   <none>    
 argocd-server-metrics                     ClusterIP   10.96.135.49    <none>        8083/TCP                     14m
 ```
 
-![alt text](<2025-11-10 22 59 56.png>)
+
+<img width="1899" height="5548" alt="2025-11-10 22 59 56" src="https://github.com/user-attachments/assets/8f858b12-b13f-4f81-9b39-8f2ab74a5c34" />
+
 
 
 ## (15) Gitlab-CLI-Installation & Adding Repository to ArgoCD
@@ -1104,7 +1112,8 @@ NAME             CLUSTER                         NAMESPACE  PROJECT  STATUS  HEA
 argocd/hello-go  https://kubernetes.default.svc  myapp      default  Synced  Progressing  Auto        <none>      https://gitlab.example.com/mygroup/hello-go.git  k8s   develop
 ```
 
-![alt text](<2025-11-10 22 58 58.png>)
+<img width="1899" height="4119" alt="2025-11-10 22 58 58" src="https://github.com/user-attachments/assets/6e0eb291-a25e-4b9c-b8c5-4b9268140c23" />
+
 
 ## (16) Visiting ArgoCD UI
 ```bash
@@ -1117,8 +1126,9 @@ Forwarding from [::1]:9090 -> 8080
 Handling connection for 9090
 Handling connection for 9090
 ```
-![alt text](<2025-11-10 23 19 44.png>)
+<img width="1920" height="1080" alt="2025-11-10 23 19 44" src="https://github.com/user-attachments/assets/d6e9a421-d71c-4fed-8edb-202ab063c94b" />
 
-![alt text](<2025-11-10 22 38 53.png>)
+<img width="1920" height="1080" alt="2025-11-10 22 38 53" src="https://github.com/user-attachments/assets/11539820-0c12-4c03-b2fc-2d13dedef95b" />
 
-![alt text](<2025-11-10 22 38 45.png>)
+<img width="1920" height="1080" alt="2025-11-10 22 38 45" src="https://github.com/user-attachments/assets/7024cac1-9b2f-4d33-bf0d-62843e12da0a" />
+
